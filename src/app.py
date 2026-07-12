@@ -33,19 +33,87 @@ def dev_server():
 def open_url(url):
     webbrowser.open(url)
 
+def get_git_status():
+    path = current["path"]
+    try:
+        branch = subprocess.run(
+            ["git","branch","--show-current"],
+            cwd=path, capture_output=True, text=True, timeout=5
+        ).stdout.strip() or "unknown"
+
+        porcelain = subprocess.run(
+            ["git","status","--porcelain"],
+            cwd=path, capture_output=True, text=True, timeout=5
+        ).stdout.strip()
+
+        latest = subprocess.run(
+            ["git","log","-1","--pretty=format:%h %s"],
+            cwd=path, capture_output=True, text=True, timeout=5
+        ).stdout.strip() or "—"
+
+        if porcelain:
+            indicator = "🟡 Working Tree Modified"
+            tree = "Modified"
+        else:
+            indicator = "🟢 Ready to Build"
+            tree = "Clean"
+
+        return {
+            "ok": True,
+            "indicator": indicator,
+            "branch": branch,
+            "tree": tree,
+            "latest": latest,
+        }
+    except Exception:
+        return {"ok": False}
+
 root=tk.Tk()
 root.title("Mission Control")
-root.geometry("520x560")
+root.geometry("520x660")
 root.resizable(False,False)
 
 title=ttk.Label(root,text="🧭 Mission Control",font=("Segoe UI",20,"bold"))
 title.pack(pady=(15,4))
 ttk.Label(root,text="Founder Platform v0.1").pack()
 
-status=ttk.Label(root,text="Project: Project Compass\nStatus: Ready to Build",
-                 font=("Segoe UI",11))
-status.pack(pady=12)
+# --- Git Status Dashboard ---
+git_outer = ttk.Frame(root, padding=(15,10,15,0))
+git_outer.pack(fill="x")
 
+git_info = get_git_status()
+
+if not git_info["ok"]:
+    ttk.Label(git_outer,
+              text="🔴 Git Status Unavailable",
+              font=("Segoe UI",11,"bold"),
+              foreground="#c0392b").pack(anchor="w")
+else:
+    ttk.Label(git_outer,
+              text=git_info["indicator"],
+              font=("Segoe UI",11,"bold")).pack(anchor="w", pady=(0,6))
+
+    git_grid = ttk.Frame(git_outer)
+    git_grid.pack(fill="x")
+
+    def git_row(label, value, wrap=False):
+        row = ttk.Frame(git_grid)
+        row.pack(fill="x", pady=1)
+        ttk.Label(row, text=label, font=("Segoe UI",9), foreground="gray",
+                  width=16, anchor="w").pack(side="left")
+        lbl = ttk.Label(row, text=value, font=("Segoe UI",9), anchor="w")
+        lbl.pack(side="left", fill="x", expand=True)
+        if wrap:
+            lbl.configure(wraplength=330, justify="left")
+
+    git_row("Project:",      "Project Compass")
+    git_row("Branch:",       git_info["branch"])
+    git_row("Git Status:",   git_info["tree"])
+    git_row("Latest Commit:", git_info["latest"], wrap=True)
+
+ttk.Separator(root, orient="horizontal").pack(fill="x", padx=15, pady=(10,0))
+
+# --- Action Buttons ---
 frm=ttk.Frame(root,padding=15)
 frm.pack(fill="both",expand=True)
 
