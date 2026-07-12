@@ -8,15 +8,10 @@ PROJECTS = {
     "Project Compass": {
         "path": r"C:\Users\shawn\CascadeProjects\project-compass",
         "github": "https://github.com/skelley917/project-compass",
-        "start": ["cmd","/c","start","cmd","/k",
-                  'cd /d "C:\\Users\\shawn\\CascadeProjects\\project-compass" && npx.cmd expo start --clear']
     }
 }
 
 current = PROJECTS["Project Compass"]
-
-def launch(cmd):
-    subprocess.Popen(cmd)
 
 def open_folder():
     os.startfile(current["path"])
@@ -28,7 +23,12 @@ def vscode():
     subprocess.Popen(["cmd","/c","code",current["path"]])
 
 def dev_server():
-    launch(current["start"])
+    project_path = r"C:\Users\shawn\CascadeProjects\project-compass"
+    command = f'cd /d "{project_path}" && npx.cmd expo start --clear'
+    subprocess.Popen(
+        ["cmd.exe", "/k", command],
+        creationflags=subprocess.CREATE_NEW_CONSOLE,
+    )
 
 def open_url(url):
     webbrowser.open(url)
