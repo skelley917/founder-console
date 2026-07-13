@@ -23,9 +23,6 @@ def vscode():
     subprocess.Popen(["cmd","/c","code",current["path"]])
 
 def dev_server():
-    project_path = r"C:\Users\shawn\CascadeProjects\project-compass"
-    command = f'cd /d "{project_path}" && npx.cmd expo start --clear'
-
     child_env = os.environ.copy()
 
     for key in (
@@ -37,8 +34,16 @@ def dev_server():
     ):
         child_env.pop(key, None)
 
+    banner = (
+        "echo Project Compass development server && "
+        "echo Mode: Development Client && "
+        "echo Connection: Tunnel"
+    )
+    command = f"{banner} && npx.cmd expo start --dev-client --tunnel --clear"
+
     subprocess.Popen(
         ["cmd.exe", "/k", command],
+        cwd=r"C:\Users\shawn\CascadeProjects\project-compass",
         creationflags=subprocess.CREATE_NEW_CONSOLE,
         env=child_env,
     )
