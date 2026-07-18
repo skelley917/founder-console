@@ -8,6 +8,8 @@ from tkinter import ttk
 from drive_by_card import DriveByCard
 from metro_card import MetroCard
 from metro_controller import MetroController
+from scrollable_frame import ScrollableFrame
+from window_geometry import format_geometry, get_initial_geometry, parse_geometry
 
 PROJECTS = {
     "Project Compass": {
@@ -103,17 +105,48 @@ def build_ui(root: tk.Tk, project: dict, settings: dict) -> None:
         settings["project_path"] = project_path_var.get()
         persist_settings()
 
-    root.title("Mission Control")
-    root.geometry("620x1150")
-    root.resizable(False, False)
+    def save_window_geometry() -> None:
+        try:
+            geom = root.geometry()
+            parsed = parse_geometry(geom)
+            if parsed:
+                settings["window_geometry"] = geom
+                save_settings(settings)
+        except Exception:
+            pass
 
+    def on_closing() -> None:
+        drive_by_card.save_persistent_state()
+        save_window_geometry()
+        root.destroy()
+
+    root.title("Mission Control")
+    root.minsize(640, 500)
+    root.resizable(True, True)
+
+    screen_w = root.winfo_screenwidth()
+    screen_h = root.winfo_screenheight()
+    saved_geometry = settings.get("window_geometry")
+    width, height, x, y = get_initial_geometry(screen_w, screen_h, saved_geometry)
+    root.geometry(format_geometry(width, height, x, y))
+
+    root.protocol("WM_DELETE_WINDOW", on_closing)
+
+    # Header stays fixed at the top.
     ttk.Label(root, text="🧭 Mission Control", font=("Segoe UI", 20, "bold")).pack(
         pady=(15, 4)
     )
     ttk.Label(root, text="Founder Platform v0.1").pack()
 
+    ttk.Separator(root, orient="horizontal").pack(fill="x", padx=15, pady=(10, 0))
+
+    # Scrollable dashboard area.
+    scrollable = ScrollableFrame(root)
+    scrollable.canvas.pack_configure(fill="both", expand=True)
+    content = scrollable.frame
+
     # --- Git Status Dashboard ---
-    git_outer = ttk.Frame(root, padding=(15, 10, 15, 0))
+    git_outer = ttk.Frame(content, padding=(15, 10, 15, 0))
     git_outer.pack(fill="x")
 
     git_info = get_git_status(project["path"])
@@ -156,10 +189,10 @@ def build_ui(root: tk.Tk, project: dict, settings: dict) -> None:
         git_row("Git Status:", git_info["tree"])
         git_row("Latest Commit:", git_info["latest"], wrap=True)
 
-    ttk.Separator(root, orient="horizontal").pack(fill="x", padx=15, pady=(10, 0))
+    ttk.Separator(content, orient="horizontal").pack(fill="x", padx=15, pady=(10, 0))
 
     # --- Action Buttons ---
-    frm = ttk.Frame(root, padding=15)
+    frm = ttk.Frame(content, padding=15)
     frm.pack(fill="both", expand=True)
 
     def section(name: str) -> None:
@@ -190,7 +223,23 @@ def build_ui(root: tk.Tk, project: dict, settings: dict) -> None:
     btn("🌐 GitHub", lambda: open_url(project["github"]))
     btn("📚 Open Docs", lambda: open_docs(project["path"]))
 
-    ttk.Label(root, text="Build Quiet. Earn Trust.", foreground="gray").pack(pady=8)
+    ttk.Label(content, text="Build Quiet. Earn Trust.", foreground="gray").pack(pady=8)
+
+    # Keep the scroll region current as cards expand, collapse, or change content.
+    def refresh_scrollregion(_event=None) -> None:
+        scrollable.update_scrollregion()
+
+    content.bind("<Configure>", refresh_scrollregion)
+
+    # Notify cards when content changes so the scroll region stays current.
+    original_drive_by_notify = drive_by_card._set_details if hasattr(drive_by_card, "_set_details") else None
+    if original_drive_by_notify:
+        def patched_set_details(text: str) -> None:
+            original_drive_by_notify(text)
+            refresh_scrollregion()
+        drive_by_card._set_details = patched_set_details
+
+    scrollable.update_scrollregion()
 
 
 def main() -> None:
