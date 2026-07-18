@@ -5,6 +5,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
 
+from drive_by_card import DriveByCard
 from metro_card import MetroCard
 from metro_controller import MetroController
 
@@ -95,12 +96,15 @@ def build_ui(root: tk.Tk, project: dict, settings: dict) -> None:
     project_path_var = tk.StringVar(value=settings.get("project_path", project["path"]))
     metro_controller = MetroController()
 
-    def persist_path() -> None:
-        settings["project_path"] = project_path_var.get()
+    def persist_settings() -> None:
         save_settings(settings)
 
+    def persist_path() -> None:
+        settings["project_path"] = project_path_var.get()
+        persist_settings()
+
     root.title("Mission Control")
-    root.geometry("560x900")
+    root.geometry("620x1150")
     root.resizable(False, False)
 
     ttk.Label(root, text="🧭 Mission Control", font=("Segoe UI", 20, "bold")).pack(
@@ -168,6 +172,11 @@ def build_ui(root: tk.Tk, project: dict, settings: dict) -> None:
 
     # --- Metro Card ---
     MetroCard(frm, metro_controller, project_path_var, persist_path)
+
+    # --- Drive-By Readiness Card ---
+    drive_by_card = DriveByCard(
+        frm, metro_controller, project_path_var, settings, persist_settings
+    )
 
     section("Development")
     btn("💻 Open VS Code", lambda: vscode(project["path"]))
